@@ -92,4 +92,44 @@ router.get('/summary', (req, res) => {
     });
 });
 
+/**
+ * Update Grade and Attendance
+ */
+router.put('/update-grade-attendance', (req, res) => {
+    const { prisonerID, programID, grade, attendance } = req.body;
+
+    // Validate grade and attendance values
+    if (grade < 0 || grade > 100) {
+        return res.status(400).send('Grade must be between 0 and 100.');
+    }
+    if (attendance < 0 || attendance > 100) {
+        return res.status(400).send('Attendance must be between 0 and 100.');
+    }
+
+    // Check if the enrollment exists
+    const validateEnrollmentQuery = `
+        SELECT COUNT(*) AS enrollmentExists
+        FROM prisoner_Education
+        WHERE prisonerID = ? AND programID = ?;
+    `;
+    db.query(validateEnrollmentQuery, [prisonerID, programID], (err, results) => {
+        if (err) return res.status(500).send('Error validating enrollment.');
+        const { enrollmentExists } = results[0];
+        if (!enrollmentExists) {
+            return res.status(404).send('Enrollment not found for this prisoner and course.');
+        }
+
+        // Update grade and attendance
+        const updateQuery = `
+            UPDATE prisoner_Education
+            SET grade = ?, attendance = ?
+            WHERE prisonerID = ? AND programID = ?;
+        `;
+        db.query(updateQuery, [grade, attendance, prisonerID, programID], (err, results) => {
+            if (err) return res.status(500).send('Error updating grade and attendance.');
+            res.status(200).send('Grade and attendance successfully updated.');
+        });
+    });
+});
+
 module.exports = router;
